@@ -45,6 +45,7 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler(ResponseStatusException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleResponseStatusException(ResponseStatusException e) {
         log.warn(e.getMessage(), e);
 
