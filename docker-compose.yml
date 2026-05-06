@@ -1,28 +1,167 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
+  # === BD ===
+  postgres:
+    image: postgres:16.1
+    container_name: rmt-postgres
+    environment:
+      POSTGRES_DB: rmt-platform
+      POSTGRES_USER: ${POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - rmt-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U rmt_admin -d rmt-platform" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # === INFRASTRUCTURE ===
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: rmt-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./scripts/grafana/provisioning:/etc/grafana/provisioning
+      - ./scripts/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - postgres
+    networks:
+      - rmt-network
+
+  # === API GATEWAY (ЕДИНЫЙ ВХОД) ===
+  api-gateway:
+    build: ./api_gateway
+    container_name: rmt-api-gateway
     ports:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/rmt-db
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_auth
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
     depends_on:
-      - db
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - rmt-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  db:
-    image: postgres:16.1
-    ports:
-      - "5432:5432"
+  # === MICROSERVICES ===
+  auth-service:
+    build: ./auth-service
+    container_name: rmt-auth
     environment:
-      - POSTGRES_DB=rmt-db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_auth
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SERVER_PORT=8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rmt-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  aggregate-control-service:
+    build: ./aggregate_control_service
+    container_name: agg-rmt-control
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_control
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SERVER_PORT=8082
+      # Переменные для Modbus (подставить реальные адреса регистраторов)
+      - MODBUS_HOST=192.168.1.100
+      - MODBUS_PORT=502
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - rmt-network
+      - modbus-network  # Отдельная сеть для доступа к оборудованию
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  monitoring-service:
+    build: ./monitoring-service
+    container_name: rmt-monitoring
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_monitoring
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SERVER_PORT=8083
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - rmt-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8083/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  journal-service:
+    build: ./journal-service
+    container_name: rmt-journal
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_journal
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SERVER_PORT=8084
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    networks:
+      - rmt-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8084/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  rmt-network:
+    driver: bridge
+  modbus-network:
+    driver: bridge
+
 
 volumes:
   postgres_data:
+  grafana_data:

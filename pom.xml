@@ -10,6 +10,15 @@
         <version>3.2.4</version>
         <relativePath/>
     </parent>
+    <packaging>pom</packaging>
+    <modules>
+        <module>rmt-common</module>
+        <module>api-gateway</module>
+        <module>auth-service</module>
+        <module>aggregate-control-service</module>
+        <module>monitoring-service</module>
+        <module>journal-service</module>
+    </modules>
 
     <repositories>
         <repository>
