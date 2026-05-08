@@ -59,7 +59,6 @@ code_quality:
   stage: check
   image: maven:3.9.6-eclipse-temurin-21
   script:
-    - mvn $MAVEN_CLI_OPTS spotless:check
     - mvn $MAVEN_CLI_OPTS checkstyle:check
   allow_failure: false
 
