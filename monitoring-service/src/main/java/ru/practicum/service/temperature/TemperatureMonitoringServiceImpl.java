@@ -4,7 +4,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ru.practicum.repository.AggregateRepository;
+import ru.practicum.feign.AggregateControlClient;
 
 import java.util.Map;
 import java.util.concurrent.*;
@@ -14,16 +14,16 @@ import java.util.concurrent.*;
 @RequiredArgsConstructor
 public class TemperatureMonitoringServiceImpl implements TemperatureMonitoringService {
     private final TemperatureService temperatureService;
-    private final AggregateRepository aggregateRepository;
+    private final AggregateControlClient aggregateControlClient;
 
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final Map<Long, ScheduledFuture<?>> monitoringTasks = new ConcurrentHashMap<>();
 
     @PostConstruct
     public void init() {
-        aggregateRepository.findAll().forEach(agg -> {
-            if (agg.getHasTemperatureSensors()) {
-                startMonitoring(agg.getId());
+        aggregateControlClient.getAllAggregates().forEach(agg -> {
+            if (agg.hasTemperatureSensors()) {
+                startMonitoring(agg.id());
             }
         });
     }

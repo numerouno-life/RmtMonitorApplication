@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.dto.AggregateDTO;
+import ru.practicum.dto.AggregateDto;
 import ru.practicum.enums.AggregateType;
 import ru.practicum.exception.custom.DuplicateAggregateException;
 import ru.practicum.exception.custom.EntityNotFoundException;
@@ -25,13 +25,13 @@ public class AggregateServiceImpl implements AggregateService {
 
     @Transactional
     @Override
-    public AggregateDTO createAggregate(AggregateDTO aggregateDTO) {
-        log.info("Создание агрегата {}", aggregateDTO);
-        if (aggregateRepository.existsByNameIgnoreCase(aggregateDTO.getName())) {
-            log.error("Агрегат с именем {} уже существует", aggregateDTO.getName());
-            throw new DuplicateAggregateException("Агрегат с именем " + aggregateDTO.getName() + " уже существует");
+    public AggregateDto createAggregate(AggregateDto aggregateDto) {
+        log.info("Создание агрегата {}", aggregateDto);
+        if (aggregateRepository.existsByNameIgnoreCase(aggregateDto.name())) {
+            log.error("Агрегат с именем {} уже существует", aggregateDto.name());
+            throw new DuplicateAggregateException("Агрегат с именем " + aggregateDto.name() + " уже существует");
         }
-        Aggregate aggregate = aggregateRepository.save(aggregateMapper.toEntity(aggregateDTO));
+        Aggregate aggregate = aggregateRepository.save(aggregateMapper.toEntity(aggregateDto));
         log.info("Агрегат {} создан", aggregate);
         return aggregateMapper.toDto(aggregate);
     }
@@ -49,7 +49,7 @@ public class AggregateServiceImpl implements AggregateService {
     }
 
     @Override
-    public List<AggregateDTO> getAllAggregates() {
+    public List<AggregateDto> getAllAggregates() {
         log.info("Получение списка всех агрегатов");
         return aggregateRepository.findAll().stream()
                 .map(aggregateMapper::toDto)
@@ -57,7 +57,7 @@ public class AggregateServiceImpl implements AggregateService {
     }
 
     @Override
-    public AggregateDTO getAggregateById(Long id) {
+    public AggregateDto getAggregateById(Long id) {
         log.info("Получение агрегата с id {}", id);
         Aggregate aggregate = findAggregateById(id);
         log.info("Агрегат {} получен", aggregate);
@@ -66,19 +66,19 @@ public class AggregateServiceImpl implements AggregateService {
 
     @Transactional
     @Override
-    public AggregateDTO updateAggregate(Long id, AggregateDTO aggregateDTO) {
+    public AggregateDto updateAggregate(Long id, AggregateDto aggregateDto) {
         log.info("Обновление агрегата с id {}", id);
         Aggregate aggregate = findAggregateById(id);
-        Optional.ofNullable(aggregateDTO.getName()).ifPresent(aggregate::setName);
-        Optional.ofNullable(aggregateDTO.getType()).ifPresent(aggregate::setType);
-        Optional.ofNullable(aggregateDTO.getHasTemperatureSensors()).ifPresent(aggregate::setHasTemperatureSensors);
+        Optional.ofNullable(aggregateDto.name()).ifPresent(aggregate::setName);
+        Optional.ofNullable(aggregateDto.type()).ifPresent(aggregate::setType);
+        Optional.ofNullable(aggregateDto.hasTemperatureSensors()).ifPresent(aggregate::setHasTemperatureSensors);
         Aggregate updatedAggregate = aggregateRepository.save(aggregate);
         log.info("Агрегат {} обновлен", updatedAggregate);
         return aggregateMapper.toDto(updatedAggregate);
     }
 
     @Override
-    public List<AggregateDTO> findByName(String name) {
+    public List<AggregateDto> findByName(String name) {
         log.info("Поиск агрегата по имени {}", name);
         return aggregateRepository.findByNameContainsIgnoreCase(name).stream()
                 .map(aggregateMapper::toDto)
@@ -86,7 +86,7 @@ public class AggregateServiceImpl implements AggregateService {
     }
 
     @Override
-    public List<AggregateDTO> findByType(String type) {
+    public List<AggregateDto> findByType(String type) {
         log.info("Поиск агрегата по типу {}", type);
         String normalizedType = type.toUpperCase().trim();
         AggregateType enumType;

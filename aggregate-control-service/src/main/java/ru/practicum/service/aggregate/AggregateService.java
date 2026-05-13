@@ -1,23 +1,23 @@
 package ru.practicum.service.aggregate;
 
-import ru.practicum.dto.AggregateDTO;
+import ru.practicum.dto.AggregateDto;
 
 import java.util.List;
 
 public interface AggregateService {
 
-    AggregateDTO createAggregate(AggregateDTO aggregateDTO);
+    AggregateDto createAggregate(AggregateDto aggregateDTO);
 
     void deleteAggregateById(Long id);
 
-    List<AggregateDTO> getAllAggregates();
+    List<AggregateDto> getAllAggregates();
 
-    AggregateDTO getAggregateById(Long id);
+    AggregateDto getAggregateById(Long id);
 
-    AggregateDTO updateAggregate(Long aggregateId, AggregateDTO aggregateDTO);
+    AggregateDto updateAggregate(Long aggregateId, AggregateDto aggregateDTO);
 
-    List<AggregateDTO> findByName(String name);
+    List<AggregateDto> findByName(String name);
 
-    List<AggregateDTO> findByType(String type);
+    List<AggregateDto> findByType(String type);
 
 }

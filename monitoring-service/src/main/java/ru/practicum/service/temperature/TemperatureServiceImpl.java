@@ -1,19 +1,19 @@
 package ru.practicum.service.temperature;
 
-import jakarta.persistence.EntityNotFoundException;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.controller.TemperatureWebSocketController;
+import ru.practicum.dto.AggregateDto;
 import ru.practicum.dto.AlertDto;
-import ru.practicum.dto.TemperatureReadingDTO;
+import ru.practicum.dto.TemperatureReadingDto;
 import ru.practicum.enums.AggregateType;
+import ru.practicum.feign.AggregateControlClient;
 import ru.practicum.modbus.ModbusClient;
-import ru.practicum.model.Aggregate;
 import ru.practicum.model.TemperatureReading;
 import ru.practicum.model.Threshold;
-import ru.practicum.repository.AggregateRepository;
 import ru.practicum.repository.TemperatureReadingRepository;
 import ru.practicum.repository.ThresholdRepository;
 import ru.practicum.service.notification.NotificationServiceImpl;
@@ -27,12 +27,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Service
 public class TemperatureServiceImpl implements TemperatureService {
-    private final AggregateRepository aggregateRepository;
     private final ThresholdRepository thresholdRepository;
     private final TemperatureReadingRepository temperatureReadingRepository;
     private final ModbusClient modbusClient;
     private final NotificationServiceImpl notificationService;
     private final TemperatureWebSocketController webSocketController;
+    private final AggregateControlClient aggregateClient;
 
     private static final Map<AggregateType, Double> WARNING_LIMITS = Map.of(
             AggregateType.VD_18, 75.0,
@@ -48,12 +48,18 @@ public class TemperatureServiceImpl implements TemperatureService {
     @Override
     public void readAndStoreTemperatures(Long aggregateId) {
         log.info("Reading temperature for aggregate {}", aggregateId);
-        Aggregate aggregate = findAggregateById(aggregateId);
-        if (!aggregate.getHasTemperatureSensors()) {
+        AggregateDto aggregateDto;
+        try {
+            aggregateDto = aggregateClient.getAggregateById(aggregateId);
+        } catch (FeignException.NotFound e) {
+            log.error("Aggregate with id {} not found in control-service", aggregateId);
+            return; //TODO: выбросить бизнес-исключение
+        }
+        if (!aggregateDto.hasTemperatureSensors()) {
             log.warn("Aggregate {} does not have temperature sensors", aggregateId);
             return;
         }
-        AggregateType aggregateType = aggregate.getType();
+        AggregateType aggregateType = aggregateDto.type();
         double warningLimit = WARNING_LIMITS.get(aggregateType);
         double alarmLimit = ALARM_LIMITS.get(aggregateType);
 
@@ -72,12 +78,12 @@ public class TemperatureServiceImpl implements TemperatureService {
 
         // Активировать сигнальные лампы и звук
         if (isAlarm) {
-            sendAlarmNotification(aggregate, front, rear);
+            sendAlarmNotification(aggregateDto, front, rear);
         } else if (isWarning) {
-            sendWarningNotification(aggregate, front, rear);
+            sendWarningNotification(aggregateDto, front, rear);
         }
 
-        saveTemperatureReading(aggregate,
+        saveTemperatureReading(aggregateDto,
                 front != null ? front : Double.NaN,
                 rear != null ? rear : Double.NaN,
                 isWarning, isAlarm);
@@ -86,38 +92,30 @@ public class TemperatureServiceImpl implements TemperatureService {
         // Обновляем уставку
         Threshold threshold = thresholdRepository.findByAggregateId(aggregateId)
                 .orElseGet(() -> Threshold.builder()
-                        .aggregate(aggregate)
+                        .aggregateDto(aggregateDto)
                         .warningThreshold(warningLimit)
                         .alarmThreshold(alarmLimit)
                         .warningTimestamp(LocalDateTime.MIN)
                         .alarmTimestamp(LocalDateTime.MIN)
                         .build());
 
-        saveThresholdEvent(aggregate, threshold, isWarning, isAlarm);
+        saveThresholdEvent(aggregateDto, threshold, isWarning, isAlarm);
     }
 
     @Override
-    public List<TemperatureReadingDTO> getLatestReadings() {
+    public List<TemperatureReadingDto> getLatestReadings() {
         return List.of();
     }
 
     @Override
-    public List<TemperatureReadingDTO> getReadingForAggregate(Long aggregateId) {
+    public List<TemperatureReadingDto> getReadingForAggregate(Long aggregateId) {
         return List.of();
     }
 
-    private Aggregate findAggregateById(Long aggregateId) {
-        return aggregateRepository.findById(aggregateId)
-                .orElseThrow(() -> {
-                    log.error("Aggregate with id {} not found", aggregateId);
-                    return new EntityNotFoundException("Aggregate with id " + aggregateId + " not found");
-                });
-    }
-
-    private void saveTemperatureReading(Aggregate aggregate, double front, double rear,
+    private void saveTemperatureReading(AggregateDto aggregateDto, double front, double rear,
                                         boolean isWarning, boolean isAlarm) {
         TemperatureReading reading = TemperatureReading.builder()
-                .aggregate(aggregate)
+                .aggregateId(aggregateDto.id())
                 .frontBearingTemp(front)
                 .rearBearingTemp(rear)
                 .isWarningTriggered(isWarning)
@@ -126,32 +124,34 @@ public class TemperatureServiceImpl implements TemperatureService {
         temperatureReadingRepository.save(reading);
     }
 
-    private void saveThresholdEvent(Aggregate aggregate, Threshold threshold, boolean isWarning, boolean isAlarm) {
+    private void saveThresholdEvent(AggregateDto aggregateDto, Threshold threshold,
+                                    boolean isWarning, boolean isAlarm) {
         Threshold update = threshold.toBuilder()
+                .aggregateDto(aggregateDto)
                 .warningTimestamp(isWarning ? LocalDateTime.now() : threshold.getWarningTimestamp())
                 .alarmTimestamp(isAlarm ? LocalDateTime.now() : threshold.getAlarmTimestamp())
                 .build();
         thresholdRepository.save(update);
     }
 
-    private void sendAlarmNotification(Aggregate aggregate, Double front, Double rear) {
+    private void sendAlarmNotification(AggregateDto aggregateDto, Double front, Double rear) {
         notificationService.sendAlert(
                 AlertDto.builder()
                         .message("АВАРИЙНАЯ ТЕМПЕРАТУРА!")
                         .level(AlertDto.AlertLevel.ALARM)
-                        .aggregateId(aggregate.getId())
+                        .aggregateId(aggregateDto.id())
                         .frontTemperature(front)
                         .rearTemperature(rear)
                         .build()
         );
     }
 
-    private void sendWarningNotification(Aggregate aggregate, Double front, Double rear) {
+    private void sendWarningNotification(AggregateDto aggregateDto, Double front, Double rear) {
         notificationService.sendAlert(
                 AlertDto.builder()
                         .message("ПРЕДУПРЕДИТЕЛЬНАЯ ТЕМПЕРАТУРА!")
                         .level(AlertDto.AlertLevel.WARNING)
-                        .aggregateId(aggregate.getId())
+                        .aggregateId(aggregateDto.id())
                         .frontTemperature(front)
                         .rearTemperature(rear)
                         .build()

@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.dto.AggregateDTO;
+import ru.practicum.dto.AggregateDto;
 import ru.practicum.service.aggregate.AggregateService;
 
 import java.util.List;
@@ -24,9 +24,9 @@ public class AggregateController {
     private final AggregateService aggregateService;
 
     @PostMapping
-    public ResponseEntity<AggregateDTO> createAggregate(@Valid @RequestBody AggregateDTO aggregateDTO) {
+    public ResponseEntity<AggregateDto> createAggregate(@Valid @RequestBody AggregateDto aggregateDTO) {
         log.info("POST /aggregates — создание агрегата: {}", aggregateDTO);
-        AggregateDTO created = aggregateService.createAggregate(aggregateDTO);
+        AggregateDto created = aggregateService.createAggregate(aggregateDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -38,34 +38,34 @@ public class AggregateController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AggregateDTO>> getAllAggregates() {
+    public ResponseEntity<List<AggregateDto>> getAllAggregates() {
         log.info("GET /aggregates — получение всех агрегатов");
         return ResponseEntity.ok(aggregateService.getAllAggregates());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AggregateDTO> getAggregateById(@PathVariable @Min(1) Long id) {
+    public ResponseEntity<AggregateDto> getAggregateById(@PathVariable @Min(1) Long id) {
         log.info("GET /aggregates/{} — получение агрегата с id {}", id, id);
         return ResponseEntity.ok(aggregateService.getAggregateById(id));
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<AggregateDTO> updateAggregateById(@PathVariable Long id,
-                                                            @RequestBody AggregateDTO aggregateDTO) {
+    public ResponseEntity<AggregateDto> updateAggregateById(@PathVariable Long id,
+                                                            @RequestBody AggregateDto aggregateDTO) {
         log.info("PATCH /aggregates/{} — обновление агрегата с id {}", id, id);
-        AggregateDTO updated = aggregateService.updateAggregate(id, aggregateDTO);
+        AggregateDto updated = aggregateService.updateAggregate(id, aggregateDTO);
         return ResponseEntity.ok(updated);
     }
 
     @GetMapping("/search/by-name")
-    public ResponseEntity<List<AggregateDTO>> getAggregatesByName(
+    public ResponseEntity<List<AggregateDto>> getAggregatesByName(
             @RequestParam @NotBlank(message = "Имя агрегата не может быть пустым") String name) {
         log.info("GET /aggregates/search/by-name — получение агрегатов по имени {}", name);
         return ResponseEntity.ok(aggregateService.findByName(name));
     }
 
     @GetMapping("/search/by-type")
-    public ResponseEntity<List<AggregateDTO>> getAggregatesByType(
+    public ResponseEntity<List<AggregateDto>> getAggregatesByType(
             @RequestParam @NotBlank(message = "Тип агрегата не может быть пустым") String type) {
         log.info("GET /aggregates/search/by-type — получение агрегатов по типу {}", type);
         return ResponseEntity.ok(aggregateService.findByType(type));

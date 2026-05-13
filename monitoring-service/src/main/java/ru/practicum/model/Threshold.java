@@ -3,6 +3,7 @@ package ru.practicum.model;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import ru.practicum.dto.AggregateDto;
 
 import java.time.LocalDateTime;
 
@@ -24,7 +25,7 @@ public class Threshold {
 
     @ManyToOne
     @JoinColumn(name = "aggregate_id")
-    Aggregate aggregate;
+    AggregateDto aggregateDto;
 
     @Column(name = "warning_threshold")
     Double warningThreshold;

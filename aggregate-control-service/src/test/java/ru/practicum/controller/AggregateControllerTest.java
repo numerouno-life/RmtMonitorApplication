@@ -9,7 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
-import ru.practicum.dto.AggregateDTO;
+import ru.practicum.dto.AggregateDto;
 import ru.practicum.enums.AggregateType;
 import ru.practicum.model.Aggregate;
 import ru.practicum.repository.AggregateRepository;
@@ -54,7 +54,7 @@ public class AggregateControllerTest {
 
     @Test
     void testCreateAggregate() throws Exception {
-        AggregateDTO dto = new AggregateDTO(null, "Test Aggregate", AggregateType.VD_18, true);
+        AggregateDto dto = new AggregateDto(null, "Test Aggregate", AggregateType.VD_18, true);
 
         mockMvc.perform(post("/aggregates")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -97,7 +97,7 @@ public class AggregateControllerTest {
     void testUpdateAggregate() throws Exception {
         Aggregate saved = createAggregate("Old Name", AggregateType.VD_18, true);
 
-        AggregateDTO updateDto = new AggregateDTO(saved.getId(), "New Name", AggregateType.VM_40, false);
+        AggregateDto updateDto = new AggregateDto(saved.getId(), "New Name", AggregateType.VM_40, false);
 
         mockMvc.perform(patch("/aggregates/{id}", saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -144,7 +144,7 @@ public class AggregateControllerTest {
 
     @Test
     void testCreateAggregateWithInvalidName() throws Exception {
-        AggregateDTO dto = new AggregateDTO(null, "", AggregateType.VD_18, true);
+        AggregateDto dto = new AggregateDto(null, "", AggregateType.VD_18, true);
 
         mockMvc.perform(post("/aggregates")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -162,14 +162,14 @@ public class AggregateControllerTest {
 
     @Test
     void testCreateAggregateWithDuplicateName() throws Exception {
-        AggregateDTO firstDto = new AggregateDTO(null, "Duplicate Name", AggregateType.VD_18, true);
+        AggregateDto firstDto = new AggregateDto(null, "Duplicate Name", AggregateType.VD_18, true);
 
         mockMvc.perform(post("/aggregates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(toJson(firstDto)))
                 .andExpect(status().isCreated());
 
-        AggregateDTO duplicateDto = new AggregateDTO(null, "Duplicate Name", AggregateType.VM_40, true);
+        AggregateDto duplicateDto = new AggregateDto(null, "Duplicate Name", AggregateType.VM_40, true);
 
         mockMvc.perform(post("/aggregates")
                         .contentType(MediaType.APPLICATION_JSON)

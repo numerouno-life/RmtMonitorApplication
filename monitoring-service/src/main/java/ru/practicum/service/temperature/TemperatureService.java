@@ -1,6 +1,6 @@
 package ru.practicum.service.temperature;
 
-import ru.practicum.dto.TemperatureReadingDTO;
+import ru.practicum.dto.TemperatureReadingDto;
 
 import java.util.List;
 
@@ -8,7 +8,7 @@ public interface TemperatureService {
 
     void readAndStoreTemperatures(Long aggregateId);
 
-    List<TemperatureReadingDTO> getLatestReadings();
+    List<TemperatureReadingDto> getLatestReadings();
 
-    List<TemperatureReadingDTO> getReadingForAggregate(Long aggregateId);
+    List<TemperatureReadingDto> getReadingForAggregate(Long aggregateId);
 }

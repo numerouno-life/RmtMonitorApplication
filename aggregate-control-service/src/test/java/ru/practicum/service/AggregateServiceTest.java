@@ -5,7 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.practicum.dto.AggregateDTO;
+import ru.practicum.dto.AggregateDto;
 import ru.practicum.enums.AggregateType;
 import ru.practicum.exception.custom.DuplicateAggregateException;
 import ru.practicum.exception.custom.EntityNotFoundException;
@@ -36,21 +36,21 @@ public class AggregateServiceTest {
 
     @Test
     void createAggregate_WhenValidData_ShouldSaveAndReturnDto() {
-        AggregateDTO inputDto = new AggregateDTO(null, "Test Aggregate", AggregateType.VD_18, true);
+        AggregateDto inputDto = new AggregateDto(null, "Test Aggregate", AggregateType.VD_18, true);
         Aggregate entity = Aggregate.builder()
                 .id(1L)
                 .name("Test Aggregate")
                 .type(AggregateType.VD_18)
                 .hasTemperatureSensors(true)
                 .build();
-        AggregateDTO expectedDto = new AggregateDTO(1L, "Test Aggregate", AggregateType.VD_18, true);
+        AggregateDto expectedDto = new AggregateDto(1L, "Test Aggregate", AggregateType.VD_18, true);
 
         when(aggregateRepository.existsByNameIgnoreCase("Test Aggregate")).thenReturn(false);
         when(aggregateMapper.toEntity(inputDto)).thenReturn(entity);
         when(aggregateRepository.save(entity)).thenReturn(entity);
         when(aggregateMapper.toDto(entity)).thenReturn(expectedDto);
 
-        AggregateDTO result = aggregateService.createAggregate(inputDto);
+        AggregateDto result = aggregateService.createAggregate(inputDto);
 
         assertThat(result.getName()).isEqualTo("Test Aggregate");
         assertThat(result.getId()).isEqualTo(1L);
@@ -61,7 +61,7 @@ public class AggregateServiceTest {
 
     @Test
     void createAggregate_WhenNameExists_ShouldThrowDuplicateException() {
-        AggregateDTO inputDto = new AggregateDTO(null, "Duplicate Name", AggregateType.VD_18, true);
+        AggregateDto inputDto = new AggregateDto(null, "Duplicate Name", AggregateType.VD_18, true);
 
         when(aggregateRepository.existsByNameIgnoreCase("Duplicate Name")).thenReturn(true);
 
@@ -83,13 +83,13 @@ public class AggregateServiceTest {
                 .hasTemperatureSensors(true)
                 .build();
 
-        AggregateDTO expectedDto = new AggregateDTO(1L, "Test Aggregate", AggregateType.VD_18, true);
+        AggregateDto expectedDto = new AggregateDto(1L, "Test Aggregate", AggregateType.VD_18, true);
 
         when(aggregateRepository.findById(1L)).thenReturn(Optional.of(entity));
         when(aggregateMapper.toDto(entity)).thenReturn(expectedDto);
 
         //when
-        AggregateDTO result = aggregateService.getAggregateById(1L);
+        AggregateDto result = aggregateService.getAggregateById(1L);
 
         //then
         assertThat(result.getId()).isEqualTo(1L);
@@ -130,7 +130,7 @@ public class AggregateServiceTest {
     @Test
     void updateAggregate_WhenValidData_ShouldUpdateAndReturnDto() {
         Long id = 1L;
-        AggregateDTO updateDto = new AggregateDTO(id, "Updated Name", AggregateType.VM_40, false);
+        AggregateDto updateDto = new AggregateDto(id, "Updated Name", AggregateType.VM_40, false);
         Aggregate existingEntity = Aggregate.builder()
                 .id(id)
                 .name("Old Name")
@@ -143,13 +143,13 @@ public class AggregateServiceTest {
                 .type(AggregateType.VM_40)
                 .hasTemperatureSensors(false)
                 .build();
-        AggregateDTO expectedDto = new AggregateDTO(id, "Updated Name", AggregateType.VM_40, false);
+        AggregateDto expectedDto = new AggregateDto(id, "Updated Name", AggregateType.VM_40, false);
 
         when(aggregateRepository.findById(id)).thenReturn(Optional.of(existingEntity));
         when(aggregateRepository.save(any(Aggregate.class))).thenReturn(updatedEntity);
         when(aggregateMapper.toDto(updatedEntity)).thenReturn(expectedDto);
 
-        AggregateDTO result = aggregateService.updateAggregate(id, updateDto);
+        AggregateDto result = aggregateService.updateAggregate(id, updateDto);
 
         assertThat(result.getName()).isEqualTo("Updated Name");
         assertThat(result.getType()).isEqualTo(AggregateType.VM_40);
@@ -176,7 +176,7 @@ public class AggregateServiceTest {
         when(aggregateRepository.findAll()).thenReturn(List.of());
 
         // When
-        List<AggregateDTO> result = aggregateService.getAllAggregates();
+        List<AggregateDto> result = aggregateService.getAllAggregates();
 
         // Then
         assertThat(result).isEmpty();

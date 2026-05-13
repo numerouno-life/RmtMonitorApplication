@@ -22,9 +22,8 @@ public class TemperatureReading {
     @Column(name = "temperature_reading_id")
     Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "aggregate_id")
-    Aggregate aggregate;
+    @Column(name = "aggregate_id", nullable = false)
+    Long aggregateId;
 
     @Column(name = "reading_date", nullable = false)
     @CreationTimestamp
