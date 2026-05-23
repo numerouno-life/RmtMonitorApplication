@@ -1,2 +1,60 @@
 server:
   port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        - id: auth-service
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/auth/**, /users/**
+          filters:
+            - StripPrefix=0
+
+        - id: aggregate-control-service
+          uri: http://aggregate-control-service:8082
+          predicates:
+            - Path=/aggregates/**, /control/**
+          filters:
+            - StripPrefix=0
+
+        - id: monitoring-service
+          uri: http://monitoring-service:8083
+          predicates:
+            - Path=/readings/**, /monitoring/**
+          filters:
+            - StripPrefix=0
+
+        - id: journal-service
+          uri: http://journal-service:8084
+          predicates:
+            - Path=/notes/**, /reports/**, /audit/**
+          filters:
+            - StripPrefix=0
+
+  jwt:
+    secret: ${JWT_SECRET:change-this-secret-to-long-random-string}
+    expiration: 3600000
+    refresh-expiration: 604800000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    ru.practicum: DEBUG
+    org.springframework.cloud.gateway: DEBUG

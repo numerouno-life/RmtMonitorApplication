@@ -9,6 +9,8 @@ import ru.practicum.enums.AggregateType;
 import ru.practicum.exception.custom.DuplicateAggregateException;
 import ru.practicum.exception.custom.EntityNotFoundException;
 import ru.practicum.exception.custom.ResponseStatusException;
+import ru.practicum.exception.custom.IllegalArgumentException;
+
 import ru.practicum.mapper.AggregateMapper;
 import ru.practicum.model.Aggregate;
 import ru.practicum.repository.AggregateRepository;
@@ -30,6 +32,9 @@ public class AggregateServiceImpl implements AggregateService {
         if (aggregateRepository.existsByNameIgnoreCase(aggregateDto.name())) {
             log.error("Агрегат с именем {} уже существует", aggregateDto.name());
             throw new DuplicateAggregateException("Агрегат с именем " + aggregateDto.name() + " уже существует");
+        }
+        if (aggregateDto.name() == null || aggregateDto.name().isBlank()) {
+            throw new IllegalArgumentException("Name cannot be blank");
         }
         Aggregate aggregate = aggregateRepository.save(aggregateMapper.toEntity(aggregateDto));
         log.info("Агрегат {} создан", aggregate);

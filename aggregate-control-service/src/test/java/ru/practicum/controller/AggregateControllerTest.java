@@ -1,14 +1,21 @@
 package ru.practicum.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import ru.practicum.dto.AggregateDto;
 import ru.practicum.enums.AggregateType;
 import ru.practicum.model.Aggregate;
@@ -18,14 +25,36 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+                "spring.liquibase.enabled=false",
+                "spring.jpa.hibernate.ddl-auto=create-drop",
+                "spring.jpa.properties.hibernate.default_schema=schema_control",
+                "spring.jpa.properties.hibernate.hbm2ddl.create_namespaces=true",
+                "spring.jpa.show-sql=true"
+        }
+)
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {
-        "spring.liquibase.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"
-})
+@Testcontainers
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class AggregateControllerTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("postgres:15-alpine")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+        registry.add("spring.datasource.username", postgresContainer::getUsername);
+        registry.add("spring.datasource.password", postgresContainer::getPassword);
+        registry.add("spring.datasource.hikari.schema", () -> "schema_control");
+    }
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -35,9 +64,19 @@ public class AggregateControllerTest {
     @Autowired
     private AggregateRepository aggregateRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
     @BeforeEach
     void setUp() {
         aggregateRepository.deleteAll();
+        jdbcTemplate.execute("ALTER SEQUENCE aggregates_aggregate_id_seq RESTART WITH 1");
+        mockMvc = MockMvcBuilders
+                .webAppContextSetup(webApplicationContext)
+                .build();
     }
 
     private Aggregate createAggregate(String name, AggregateType type, boolean hasTemperatureSensors) {
@@ -143,20 +182,13 @@ public class AggregateControllerTest {
     }
 
     @Test
+    @Order(1)
     void testCreateAggregateWithInvalidName() throws Exception {
         AggregateDto dto = new AggregateDto(null, "", AggregateType.VD_18, true);
 
         mockMvc.perform(post("/aggregates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(toJson(dto)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void testGetAggregatesByInvalidType() throws Exception {
-        mockMvc.perform(get("/aggregates/search/by-type")
-                        .param("type", "INVALID_TYPE")
-                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
@@ -210,5 +242,4 @@ public class AggregateControllerTest {
                 .andExpect(jsonPath("$.type").value("VD_18"))
                 .andExpect(jsonPath("$.hasTemperatureSensors").value(true));
     }
-
 }

@@ -1,2 +1,80 @@
 server:
   port: 8082
+
+spring:
+  application:
+    name: aggregate-controller-service
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_control
+    username: ${DB_USERNAME:rmt_admin}
+    password: ${DB_PASSWORD:change_me}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate.ddl-auto : validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    default-schema: schema_control
+
+# Modbus настройки (для подключения к оборудованию)
+modbus:
+  host: ${MODBUS_HOST:192.168.1.100}
+  port: ${MODBUS_PORT:502}
+  connection-timeout: 5000
+  read-timeout: 3000
+
+# Feign: вызовы к auth-service (для проверки прав) и journal-service (для аудита)
+feign:
+  client:
+    config:
+      auth-service:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: basic
+      journal-service:
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: basic
+
+services:
+  auth:
+    url: http://auth-service:8081
+  journal:
+    url: http://journal-service:8084
+
+# Resilience4j для устойчивости
+resilience4j:
+  circuitbreaker:
+    instances:
+      auth-service:
+        registerHealthIndicator: true
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    ru.practicum.control: DEBUG
+    com.ghgande.j2mod: WARN

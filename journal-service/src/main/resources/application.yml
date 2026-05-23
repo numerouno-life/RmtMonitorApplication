@@ -1,2 +1,80 @@
 server:
   port: 8084
+
+spring:
+  application:
+    name: journal-service
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_journal
+    username: ${DB_USERNAME:rmt_admin}
+    password: ${DB_PASSWORD:change_me}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    default-schema: schema_journal
+
+# Feign: вызовы к auth-service (кто пользователь) и aggregate-control-service (инфо об агрегате)
+feign:
+  client:
+    config:
+      default: # ← добавить эту секцию
+        connectTimeout: 5000
+        readTimeout: 5000
+        loggerLevel: basic
+
+services:
+  auth:
+    url: http://auth-service:8081
+  aggregate:
+    url: http://aggregate-control-service:8082
+
+# Настройки аудита: "электронная подпись"
+audit:
+  signature:
+    algorithm: HMAC-SHA256
+    salt-prefix: ${AUDIT_SALT:change_audit_salt_in_production}
+    enabled: true  #можно включать/выключать
+    required-for-actions: CREATE,UPDATE,DELETE
+
+# Настройки журналов и отчетов
+journal:
+  retention-days: 90
+  archive:
+    enabled: true
+    cron: "0 0 2 * * *"
+    path: ${JOURNAL_ARCHIVE_PATH:/var/backups/journal}
+
+reports:
+  timezone: ${REPORT_TIMEZONE:Europe/Moscow}
+  shift-duration-hours: 12
+  export:
+    max-rows: 10000
+    default-format: PDF
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    ru.practicum.journal: DEBUG
+    ru.practicum.common.audit: DEBUG

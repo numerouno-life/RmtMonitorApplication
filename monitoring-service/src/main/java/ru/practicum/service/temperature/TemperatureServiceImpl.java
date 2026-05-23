@@ -16,7 +16,7 @@ import ru.practicum.model.TemperatureReading;
 import ru.practicum.model.Threshold;
 import ru.practicum.repository.TemperatureReadingRepository;
 import ru.practicum.repository.ThresholdRepository;
-import ru.practicum.service.notification.NotificationServiceImpl;
+import ru.practicum.service.notification.NotificationService;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -30,7 +30,7 @@ public class TemperatureServiceImpl implements TemperatureService {
     private final ThresholdRepository thresholdRepository;
     private final TemperatureReadingRepository temperatureReadingRepository;
     private final ModbusClient modbusClient;
-    private final NotificationServiceImpl notificationService;
+    private final NotificationService notificationService;
     private final TemperatureWebSocketController webSocketController;
     private final AggregateControlClient aggregateClient;
 
@@ -83,23 +83,15 @@ public class TemperatureServiceImpl implements TemperatureService {
             sendWarningNotification(aggregateDto, front, rear);
         }
 
-        saveTemperatureReading(aggregateDto,
+        saveTemperatureReading(aggregateId,
                 front != null ? front : Double.NaN,
                 rear != null ? rear : Double.NaN,
                 isWarning, isAlarm);
 
         broadcastTemperatureUpdate(aggregateId, front, rear);
-        // Обновляем уставку
-        Threshold threshold = thresholdRepository.findByAggregateId(aggregateId)
-                .orElseGet(() -> Threshold.builder()
-                        .aggregateDto(aggregateDto)
-                        .warningThreshold(warningLimit)
-                        .alarmThreshold(alarmLimit)
-                        .warningTimestamp(LocalDateTime.MIN)
-                        .alarmTimestamp(LocalDateTime.MIN)
-                        .build());
 
-        saveThresholdEvent(aggregateDto, threshold, isWarning, isAlarm);
+        // Обновляем уставку
+        saveThresholdEvent(aggregateId, warningLimit, alarmLimit, isWarning, isAlarm);
     }
 
     @Override
@@ -112,26 +104,62 @@ public class TemperatureServiceImpl implements TemperatureService {
         return List.of();
     }
 
-    private void saveTemperatureReading(AggregateDto aggregateDto, double front, double rear,
+    private void saveTemperatureReading(Long aggregateId, Double front, Double rear,
                                         boolean isWarning, boolean isAlarm) {
         TemperatureReading reading = TemperatureReading.builder()
-                .aggregateId(aggregateDto.id())
-                .frontBearingTemp(front)
-                .rearBearingTemp(rear)
+                .aggregateId(aggregateId)
+                .frontBearingTemp(front != null ? front : Double.NaN)
+                .rearBearingTemp(rear != null ? rear : Double.NaN)
                 .isWarningTriggered(isWarning)
                 .isAlarmTriggered(isAlarm)
                 .build();
         temperatureReadingRepository.save(reading);
     }
 
-    private void saveThresholdEvent(AggregateDto aggregateDto, Threshold threshold,
-                                    boolean isWarning, boolean isAlarm) {
-        Threshold update = threshold.toBuilder()
-                .aggregateDto(aggregateDto)
-                .warningTimestamp(isWarning ? LocalDateTime.now() : threshold.getWarningTimestamp())
-                .alarmTimestamp(isAlarm ? LocalDateTime.now() : threshold.getAlarmTimestamp())
-                .build();
-        thresholdRepository.save(update);
+    private void saveThresholdEvent(Long aggregateId, double warningLimit,
+                                    double alarmLimit, boolean isWarning, boolean isAlarm) {
+        // Сохраняем событие только если есть предупреждение или авария
+        if (!isWarning && !isAlarm) {
+            return;
+        }
+
+        Threshold threshold = thresholdRepository.findByAggregateId(aggregateId)
+                .orElse(Threshold.builder()
+                        .aggregateId(aggregateId)
+                        .warningThreshold(warningLimit)
+                        .alarmThreshold(alarmLimit)
+                        .warningTimestamp(LocalDateTime.MIN)
+                        .alarmTimestamp(LocalDateTime.MIN)
+                        .build());
+
+        boolean needUpdate = false;
+
+        // Обновляем лимиты, если они изменились
+        if (!threshold.getWarningThreshold().equals(warningLimit)) {
+            threshold.setWarningThreshold(warningLimit);
+            needUpdate = true;
+        }
+
+        if (!threshold.getAlarmThreshold().equals(alarmLimit)) {
+            threshold.setAlarmThreshold(alarmLimit);
+            needUpdate = true;
+        }
+
+        // Устанавливаем timestamp первого предупреждения (только если нет аварии)
+        if (isWarning && !isAlarm && threshold.getWarningTimestamp().equals(LocalDateTime.MIN)) {
+            threshold.setWarningTimestamp(LocalDateTime.now());
+            needUpdate = true;
+        }
+
+        // Устанавливаем timestamp первой аварии
+        if (isAlarm && threshold.getAlarmTimestamp().equals(LocalDateTime.MIN)) {
+            threshold.setAlarmTimestamp(LocalDateTime.now());
+            needUpdate = true;
+        }
+
+        if (needUpdate) {
+            thresholdRepository.save(threshold);
+        }
     }
 
     private void sendAlarmNotification(AggregateDto aggregateDto, Double front, Double rear) {

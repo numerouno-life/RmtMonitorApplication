@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # === BD ===
   postgres:
@@ -12,7 +10,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     networks:
       - rmt-network
@@ -44,7 +42,7 @@ services:
 
   # === API GATEWAY (ЕДИНЫЙ ВХОД) ===
   api-gateway:
-    build: ./api_gateway
+    build: ./api-gateway
     container_name: rmt-api-gateway
     ports:
       - "8080:8080"
@@ -70,6 +68,8 @@ services:
   auth-service:
     build: ./auth-service
     container_name: rmt-auth
+    ports:
+      - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_auth
@@ -88,17 +88,20 @@ services:
       retries: 3
 
   aggregate-control-service:
-    build: ./aggregate_control_service
+    build: ./aggregate-control-service
     container_name: agg-rmt-control
+    ports:
+      - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_control
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-rmt_admin}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-change_me}
       - SERVER_PORT=8082
-      # Переменные для Modbus (подставить реальные адреса регистраторов)
-      - MODBUS_HOST=192.168.1.100
-      - MODBUS_PORT=502
+      - MODBUS_HOST=${MODBUS_HOST:-192.168.1.100}
+      - MODBUS_PORT=${MODBUS_PORT:-502}
+      - SERVICES_AUTH_URL=http://auth-service:8081
+      - SERVICES_JOURNAL_URL=http://journal-service:8084
     depends_on:
       postgres:
         condition: service_healthy
@@ -116,17 +119,23 @@ services:
   monitoring-service:
     build: ./monitoring-service
     container_name: rmt-monitoring
+    ports:
+      - "8083:8083"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_monitoring
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SERVER_PORT=8083
+      - MODBUS_HOST=${MODBUS_HOST:-192.168.1.100}
+      - MODBUS_PORT=${MODBUS_PORT:-502}
+      - SERVICES_AGGREGATE_URL=http://aggregate-control-service:8082
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - rmt-network
+      - modbus-network
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8083/actuator/health" ]
       interval: 30s
@@ -136,12 +145,17 @@ services:
   journal-service:
     build: ./journal-service
     container_name: rmt-journal
+    ports:
+      - "8084:8084"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_journal
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SERVER_PORT=8084
+      - SERVICES_AUTH_URL=http://auth-service:8081
+      - SERVICES_AGGREGATE_URL=http://aggregate-control-service:8082
+      - AUDIT_SIGNATURE_SALT_PREFIX=${AUDIT_SALT:-local-audit-salt}
     depends_on:
       postgres:
         condition: service_healthy

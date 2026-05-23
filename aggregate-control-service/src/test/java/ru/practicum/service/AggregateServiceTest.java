@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import ru.practicum.dto.AggregateDto;
 import ru.practicum.enums.AggregateType;
 import ru.practicum.exception.custom.DuplicateAggregateException;
@@ -52,8 +53,8 @@ public class AggregateServiceTest {
 
         AggregateDto result = aggregateService.createAggregate(inputDto);
 
-        assertThat(result.getName()).isEqualTo("Test Aggregate");
-        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Test Aggregate");
+        assertThat(result.id()).isEqualTo(1L);
 
         verify(aggregateRepository).existsByNameIgnoreCase("Test Aggregate");
         verify(aggregateRepository).save(entity);
@@ -68,7 +69,7 @@ public class AggregateServiceTest {
         // When & Then
         assertThatThrownBy(() -> aggregateService.createAggregate(inputDto))
                 .isInstanceOf(DuplicateAggregateException.class)
-                .hasMessage("Агрегат с именем " + inputDto.getName() + " уже существует");
+                .hasMessage("Агрегат с именем " + inputDto.name() + " уже существует");
 
         verify(aggregateRepository).existsByNameIgnoreCase("Duplicate Name");
         verify(aggregateRepository, never()).save(any());
@@ -92,9 +93,9 @@ public class AggregateServiceTest {
         AggregateDto result = aggregateService.getAggregateById(1L);
 
         //then
-        assertThat(result.getId()).isEqualTo(1L);
-        assertThat(result.getName()).isEqualTo("Test Aggregate");
-        assertThat(result.getType()).isEqualTo(AggregateType.VD_18);
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("Test Aggregate");
+        assertThat(result.type()).isEqualTo(AggregateType.VD_18);
     }
 
     @Test
@@ -151,9 +152,9 @@ public class AggregateServiceTest {
 
         AggregateDto result = aggregateService.updateAggregate(id, updateDto);
 
-        assertThat(result.getName()).isEqualTo("Updated Name");
-        assertThat(result.getType()).isEqualTo(AggregateType.VM_40);
-        assertThat(result.getHasTemperatureSensors()).isEqualTo(false);
+        assertThat(result.name()).isEqualTo("Updated Name");
+        assertThat(result.type()).isEqualTo(AggregateType.VM_40);
+        assertThat(result.hasTemperatureSensors()).isEqualTo(false);
 
         verify(aggregateRepository).save(argThat(aggregate ->
                 aggregate.getName().equals("Updated Name") &&
@@ -164,11 +165,10 @@ public class AggregateServiceTest {
     }
 
     @Test
-    void findByType_WhenInvalidType_ShouldThrowIllegalArgumentException() {
-        // When & Then
+    void findByType_WhenInvalidType_ShouldThrowResponseStatusException() {
         assertThatThrownBy(() -> aggregateService.findByType("INVALID_TYPE"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Неизвестный тип агрегата: INVALID_TYPE");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("No enum constant ru.practicum.enums.AggregateType.INVALID_TYPE");
     }
 
     @Test

@@ -7,12 +7,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.practicum.controller.TemperatureWebSocketController;
+import ru.practicum.dto.AggregateDto;
 import ru.practicum.enums.AggregateType;
+import ru.practicum.feign.AggregateControlClient;
 import ru.practicum.modbus.ModbusClient;
-import ru.practicum.model.Aggregate;
 import ru.practicum.model.TemperatureReading;
 import ru.practicum.model.Threshold;
-import ru.practicum.repository.AggregateRepository;
 import ru.practicum.repository.TemperatureReadingRepository;
 import ru.practicum.repository.ThresholdRepository;
 import ru.practicum.service.notification.NotificationService;
@@ -32,7 +32,7 @@ public class TemperatureServiceImplTest {
     private TemperatureServiceImpl temperatureService;
 
     @Mock
-    private AggregateRepository aggregateRepository;
+    private AggregateControlClient aggregateControlClient;
 
     @Mock
     private ThresholdRepository thresholdRepository;
@@ -51,9 +51,8 @@ public class TemperatureServiceImplTest {
 
     @Test
     void readAndStoreTemperatures_WhenNormalTemperatures_ShouldSaveReadingAndBroadcast() throws IOException {
-        // Arrange
         Long aggregateId = 1L;
-        Aggregate aggregate = Aggregate.builder()
+        AggregateDto aggregate = AggregateDto.builder()
                 .id(aggregateId)
                 .name("Test Aggregate")
                 .type(AggregateType.VD_18)
@@ -65,19 +64,16 @@ public class TemperatureServiceImplTest {
         double[] mockTemps = {frontTemp, rearTemp};
 
         // Мокаем зависимости
-        when(aggregateRepository.findById(aggregateId)).thenReturn(Optional.of(aggregate));
-        when(modbusClient.readTemperatures(2, 3)).thenReturn(mockTemps); // aggregateId * 2 = 2, +1 = 3
-        when(thresholdRepository.findByAggregateId(aggregateId)).thenReturn(Optional.empty());
+        when(aggregateControlClient.getAggregateById(aggregateId)).thenReturn(aggregate);
+        when(modbusClient.readTemperatures(2, 3)).thenReturn(mockTemps);
 
         // Act
         temperatureService.readAndStoreTemperatures(aggregateId);
 
         // Assert
-        // Проверяем, что температура была прочитана
         verify(modbusClient).readTemperatures(2, 3);
 
-        // Проверяем, что чтение было сохранено (без предупреждений/аварий)
-        // ArgumentCaptor для проверки аргументов save
+        // Проверяем сохранение TemperatureReading
         ArgumentCaptor<TemperatureReading> readingCaptor = ArgumentCaptor.forClass(TemperatureReading.class);
         verify(temperatureReadingRepository).save(readingCaptor.capture());
         TemperatureReading savedReading = readingCaptor.getValue();
@@ -85,22 +81,52 @@ public class TemperatureServiceImplTest {
         assertThat(savedReading.getRearBearingTemp()).isEqualTo(rearTemp);
         assertThat(savedReading.getIsWarningTriggered()).isFalse();
         assertThat(savedReading.getIsAlarmTriggered()).isFalse();
-        assertThat(savedReading.getAggregate()).isEqualTo(aggregate);
+        assertThat(savedReading.getAggregateId()).isEqualTo(aggregateId);
 
-        // Проверяем, что уставка была создана/обновлена
-        ArgumentCaptor<Threshold> thresholdCaptor = ArgumentCaptor.forClass(Threshold.class);
-        verify(thresholdRepository).save(thresholdCaptor.capture());
-        Threshold savedThreshold = thresholdCaptor.getValue();
-        assertThat(savedThreshold.getWarningThreshold()).isEqualTo(75.0); // предупредительная температура
-        assertThat(savedThreshold.getAlarmThreshold()).isEqualTo(80.0);   // аварийная температура
-        // Проверяем, что timestamps НЕ обновились, так как нет предупреждений/аварий
-        assertThat(savedThreshold.getWarningTimestamp()).isEqualTo(LocalDateTime.MIN);
-        assertThat(savedThreshold.getAlarmTimestamp()).isEqualTo(LocalDateTime.MIN);
+        // Проверяем, что Threshold НЕ сохраняется (нет предупреждений и аварий)
+        verify(thresholdRepository, never()).save(any(Threshold.class));
 
         // Проверяем, что уведомления НЕ отправлялись
         verify(notificationService, never()).sendAlert(any());
 
-        // Проверяем, что данные были отправлены по WebSocket
+        // Проверяем WebSocket
         verify(temperatureWebSocketController).broadcastTemperatureUpdate(eq(aggregateId), eq(frontTemp), eq(rearTemp));
+    }
+
+    @Test
+    void readAndStoreTemperatures_WhenAlarmTemperature_ShouldSaveThreshold() throws IOException {
+        Long aggregateId = 1L;
+        AggregateDto aggregate = AggregateDto.builder()
+                .id(aggregateId)
+                .name("Test Aggregate")
+                .type(AggregateType.VD_18)
+                .hasTemperatureSensors(true)
+                .build();
+
+        double frontTemp = 85.0; // Аварийная температура (выше 80)
+        double rearTemp = 55.0;
+        double[] mockTemps = {frontTemp, rearTemp};
+
+        // Мокаем зависимости
+        when(aggregateControlClient.getAggregateById(aggregateId)).thenReturn(aggregate);
+        when(modbusClient.readTemperatures(2, 3)).thenReturn(mockTemps);
+        when(thresholdRepository.findByAggregateId(aggregateId)).thenReturn(Optional.empty());
+
+        // Act
+        temperatureService.readAndStoreTemperatures(aggregateId);
+
+        // Assert
+        // Проверяем, что Threshold был создан и сохранен
+        ArgumentCaptor<Threshold> thresholdCaptor = ArgumentCaptor.forClass(Threshold.class);
+        verify(thresholdRepository).save(thresholdCaptor.capture());
+        Threshold savedThreshold = thresholdCaptor.getValue();
+        assertThat(savedThreshold.getAggregateId()).isEqualTo(aggregateId);
+        assertThat(savedThreshold.getWarningThreshold()).isEqualTo(75.0);
+        assertThat(savedThreshold.getAlarmThreshold()).isEqualTo(80.0);
+        assertThat(savedThreshold.getWarningTimestamp()).isEqualTo(LocalDateTime.MIN);
+        assertThat(savedThreshold.getAlarmTimestamp()).isNotEqualTo(LocalDateTime.MIN); // Должен быть установлен
+
+        // Проверяем, что аварийное уведомление отправлено
+        verify(notificationService, atLeastOnce()).sendAlert(any());
     }
 }

@@ -7,12 +7,13 @@ import org.mapstruct.ReportingPolicy;
 import ru.practicum.dto.ThresholdDto;
 import ru.practicum.model.Threshold;
 
-@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING)
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE,
+        componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ThresholdMapper {
 
-    @Mapping(source = "aggregateId", target = "aggregateDto.id")
+    @Mapping(target = "aggregateId", source = "aggregateId")
     Threshold toEntity(ThresholdDto dto);
 
-    @Mapping(source = "aggregate.id", target = "aggregateId")
+    @Mapping(target = "aggregateId", source = "aggregateId")
     ThresholdDto toDto(Threshold entity);
 }
