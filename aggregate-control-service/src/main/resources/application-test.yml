@@ -1,19 +1,22 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/testdb
-    username: test
-    password: test
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:init.sql'
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
 
   jpa:
     hibernate:
       ddl-auto: create-drop
-    show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
         default_schema: schema_control
+    show-sql: true
 
   liquibase:
-    enabled: false  # Отключаем liquibase для тестов
+    enabled: false
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG

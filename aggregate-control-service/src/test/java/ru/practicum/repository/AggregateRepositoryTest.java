@@ -6,7 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import ru.practicum.enums.AggregateType;
 import ru.practicum.model.Aggregate;
 
@@ -15,12 +19,27 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
-@TestPropertySource(properties = {
-        "spring.liquibase.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
-})
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // Важно: отключаем автоматическую замену
+@Testcontainers
 public class AggregateRepositoryTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("postgres:15-alpine")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test")
+            .withInitScript("init-schema.sql");
+
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+        registry.add("spring.datasource.username", postgresContainer::getUsername);
+        registry.add("spring.datasource.password", postgresContainer::getPassword);
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        registry.add("spring.liquibase.enabled", () -> "false");
+        registry.add("spring.jpa.properties.hibernate.default_schema", () -> "schema_control");
+        registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.PostgreSQLDialect");
+    }
 
     @Autowired
     private TestEntityManager entityManager;
@@ -31,8 +50,11 @@ public class AggregateRepositoryTest {
     @BeforeEach
     void setUp() {
         aggregateRepository.deleteAll();
+        // Сброс последовательности для PostgreSQL
+        entityManager.getEntityManager()
+                .createNativeQuery("ALTER SEQUENCE schema_control.aggregates_aggregate_id_seq RESTART WITH 1")
+                .executeUpdate();
     }
-
 
     @Test
     void findByNameContainsIgnoreCase_ShouldBeCaseInsensitive() {
@@ -57,7 +79,6 @@ public class AggregateRepositoryTest {
         assertThat(found).hasSize(2);
         assertThat(found).extracting(Aggregate::getName)
                 .containsExactlyInAnyOrder("Test Aggregate", "another test");
-
     }
 
     @Test
@@ -85,7 +106,6 @@ public class AggregateRepositoryTest {
         assertThat(found.get(0).getType()).isEqualTo(AggregateType.VD_18);
         assertThat(found.get(0).getName()).isEqualTo("VD Aggregate 0");
         assertThat(found.get(1).getName()).isEqualTo("VD Aggregate 1");
-
     }
 
     @Test
@@ -138,5 +158,4 @@ public class AggregateRepositoryTest {
         assertThat(found.get(0).getName()).isEqualTo("Agg 2");
         assertThat(found.get(1).getName()).isEqualTo("Agg 1");
     }
-
 }

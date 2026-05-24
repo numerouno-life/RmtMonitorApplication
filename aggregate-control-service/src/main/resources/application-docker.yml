@@ -1,6 +1,19 @@
 spring:
   datasource:
-    url: jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=${spring.jpa.properties.hibernate.default_schema}&stringtype=unspecified
+    url: jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_control&stringtype=unspecified
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: schema_control
+    liquibase-schema: schema_control
 
 # Более строгие таймауты для prod-подобной среды
 feign:
@@ -15,3 +28,4 @@ logging:
   level:
     root: INFO
     ru.practicum: INFO
+    ru.practicum.control: WARN

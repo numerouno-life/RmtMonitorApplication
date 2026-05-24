@@ -7,23 +7,33 @@ spring:
 
   datasource:
     url: jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_control
-    username: ${DB_USERNAME:rmt_admin}
-    password: ${DB_PASSWORD:change_me}
+    username: ${SPRING_DATASOURCE_USERNAME:rmt_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:change_me}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
-    hibernate.ddl-auto : validate
+    hibernate:
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         format_sql: true
+        default_schema: schema_control
+        jdbc:
+          batch_size: 20
 
   liquibase:
     enabled: true
-    change-log: classpath:db/changelog/db.changelog-master.xml
+    change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: schema_control
+    liquibase-schema: schema_control
+    drop-first: false
 
 # Modbus настройки (для подключения к оборудованию)
 modbus:
@@ -31,6 +41,7 @@ modbus:
   port: ${MODBUS_PORT:502}
   connection-timeout: 5000
   read-timeout: 3000
+  retry-attempts: 3
 
 # Feign: вызовы к auth-service (для проверки прав) и journal-service (для аудита)
 feign:
@@ -47,15 +58,23 @@ feign:
 
 services:
   auth:
-    url: http://auth-service:8081
+    url: ${SERVICES_AUTH_URL:http://auth-service:8081}
   journal:
-    url: http://journal-service:8084
+    url: ${SERVICES_JOURNAL_URL:http://journal-service:8084}
 
 # Resilience4j для устойчивости
 resilience4j:
   circuitbreaker:
     instances:
       auth-service:
+        registerHealthIndicator: true
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+      journal-service:
         registerHealthIndicator: true
         failureRateThreshold: 50
         minimumNumberOfCalls: 5

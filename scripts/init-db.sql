@@ -1,0 +1,4 @@
+CREATE SCHEMA IF NOT EXISTS schema_control;
+CREATE SCHEMA IF NOT EXISTS schema_auth;
+CREATE SCHEMA IF NOT EXISTS schema_monitoring;
+CREATE SCHEMA IF NOT EXISTS schema_journal;

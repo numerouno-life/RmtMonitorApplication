@@ -23,7 +23,7 @@ public class Aggregate {
     @Column(name = "aggregate_id")
     Long id;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, unique = true)
     String name;
 
     @Enumerated(EnumType.STRING)

@@ -15,7 +15,7 @@ services:
     networks:
       - rmt-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U rmt_admin -d rmt-platform" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d rmt-platform" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -83,7 +83,7 @@ services:
       - rmt-network
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
-      interval: 30s
+      interval: 10s
       timeout: 10s
       retries: 3
 
@@ -95,8 +95,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_control
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-rmt_admin}
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-change_me}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - SERVER_PORT=8082
       - MODBUS_HOST=${MODBUS_HOST:-192.168.1.100}
       - MODBUS_PORT=${MODBUS_PORT:-502}

@@ -1,0 +1,65 @@
+databaseChangeLog:
+  # ===== ТАБЛИЦА АГРЕГАТОВ =====
+  - changeSet:
+      id: create-aggregates-table
+      author: Numerouno_life
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              tableName: aggregates
+              schemaName: schema_control
+      changes:
+        - createTable:
+            tableName: aggregates
+            schemaName: schema_control
+            columns:
+              - column:
+                  name: aggregate_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: type
+                  type: VARCHAR(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: has_temperature_sensors
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_state
+                  type: VARCHAR(100)
+              - column:
+                  name: control_mode
+                  type: VARCHAR(50)
+
+  - changeSet:
+      id: create-aggregates-indexes
+      author: Numerouno_life
+      changes:
+        - createIndex:
+            tableName: aggregates
+            schemaName: schema_control
+            indexName: idx_aggregates_name
+            columns:
+              - column:
+                  name: name
+        - createIndex:
+            tableName: aggregates
+            schemaName: schema_control
+            indexName: idx_aggregates_type
+            columns:
+              - column:
+                  name: type

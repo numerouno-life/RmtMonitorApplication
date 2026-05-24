@@ -7,8 +7,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=schema_monitoring
-    username: ${DB_USERNAME:rmt_admin}
-    password: ${DB_PASSWORD:change_me}
+    username: ${SPRING_DATASOURCE_USERNAME:rmt_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:change_me}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -27,11 +27,14 @@ spring:
         jdbc:
           batch_size: 50
         order_inserts: true
+        default_schema: schema_monitoring
 
   liquibase:
     enabled: true
-    change-log: classpath:db/changelog/db.changelog-master.xml
+    change-log: classpath:db/changelog/db.changelog-master.yaml
     default-schema: schema_monitoring
+    liquibase-schema: schema_monitoring
+    drop-first: false
 
   # Кеширование для DTO агрегатов (чтобы не дёргать другой сервис каждые 5 сек)
   cache:
@@ -45,22 +48,22 @@ modbus:
   host: ${MODBUS_HOST:192.168.1.100}
   port: ${MODBUS_PORT:502}
   polling-interval: 5000
-  read-timeout: 3000  # таймаут чтения
-  connection-timeout: 5000  # таймаут соединения
-  retry-attempts: 3  # попыток при ошибке
+  read-timeout: 3000
+  connection-timeout: 5000
+  retry-attempts: 3
 
 # Feign: вызовы к aggregate-control-service за инфо об агрегатах
 feign:
   client:
     config:
-      aggregate-controller-service:
+      aggregate-control-service:
         connectTimeout: 5000
         readTimeout: 5000
         loggerLevel: basic
 
 services:
-  aggregate-controller-service:
-    url: http://aggregate-control-service:8082
+  aggregate:
+    url: ${SERVICES_AGGREGATE_URL:http://aggregate-control-service:8082}
 
 # Grafana: read-only пользователь для прямого подключения к БД
 management:
@@ -72,9 +75,11 @@ management:
     export:
       prometheus:
         enabled: true
-        step: 1m  # шаг сбора метрик
+        step: 1m
 
 logging:
   level:
     root: INFO
     ru.practicum.monitoring: DEBUG
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
