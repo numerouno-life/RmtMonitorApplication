@@ -6,12 +6,14 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
 
   liquibase:
     enabled: true
-    contexts: docker
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: schema_monitoring
+    liquibase-schema: schema_monitoring
 
 # Более строгие таймауты для prod-подобной среды
 feign:

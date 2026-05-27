@@ -34,6 +34,6 @@ public class Threshold {
     @Column(name = "alarm_threshold")
     Double alarmThreshold;
 
-    @Column(name = "alarm_timestamp", nullable = false)
+    @Column(name = "alarm_timestamp")
     LocalDateTime alarmTimestamp;
 }

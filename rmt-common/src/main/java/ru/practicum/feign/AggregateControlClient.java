@@ -7,7 +7,9 @@ import ru.practicum.dto.AggregateDto;
 
 import java.util.List;
 
-@FeignClient(name = "aggregate-control-service", path = "/aggregates")
+@FeignClient(name = "aggregate-control-service",
+        url = "${SERVICES_AGGREGATE_URL:http://aggregate-control-service:8082}",
+        path = "/aggregates")
 public interface AggregateControlClient {
 
     @GetMapping("/{id}")

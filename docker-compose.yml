@@ -112,7 +112,7 @@ services:
       - modbus-network  # Отдельная сеть для доступа к оборудованию
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
-      interval: 30s
+      interval: 15s
       timeout: 10s
       retries: 3
 
@@ -133,12 +133,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      aggregate-control-service:
+        condition: service_healthy
     networks:
       - rmt-network
       - modbus-network
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8083/actuator/health" ]
-      interval: 30s
+      interval: 15s
       timeout: 10s
       retries: 3
 
