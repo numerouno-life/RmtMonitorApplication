@@ -1,0 +1,37 @@
+spring:
+  datasource:
+    # Локально подключаемся к localhost, а не к контейнеру
+    url: jdbc:postgresql://localhost:5432/rmt-platform?currentSchema=schema_control
+    username: rmt_admin
+    password: change_me
+
+  jpa:
+    hibernate:
+      ddl-auto: update  # Для локальной разработки автосоздание
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    enabled: true
+
+# Отключаем строгие таймауты для локальной разработки
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 30000
+        readTimeout: 30000
+
+logging:
+  level:
+    root: DEBUG
+    ru.practicum.control: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.cloud.openfeign: DEBUG
+    org.hibernate.SQL: DEBUG
+
+modbus:
+  host: localhost
+  port: 502

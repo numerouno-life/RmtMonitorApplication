@@ -15,6 +15,7 @@ target/
 *.ipr
 gigaide.properties
 dbnavigator.xml
+.env
 
 ### Eclipse ###
 .apt_generated

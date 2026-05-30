@@ -1,0 +1,17 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/rmt-platform?currentSchema=${spring.jpa.properties.hibernate.default_schema}&stringtype=unspecified
+
+# Более строгие таймауты для prod-подобной среды
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000
+
+# Минимизируем логирование в контейнерах
+logging:
+  level:
+    root: INFO
+    ru.practicum: INFO

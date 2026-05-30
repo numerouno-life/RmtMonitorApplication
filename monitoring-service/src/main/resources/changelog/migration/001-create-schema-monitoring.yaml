@@ -1,0 +1,116 @@
+databaseChangeLog:
+  # ===== ТАБЛИЦА ЧТЕНИЯ ТЕМПЕРАТУРЫ =====
+  - changeSet:
+      id: create-monitoring-table
+      author: Numerouno_life
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              tableName: temperature_readings
+              schemaName: schema_monitoring
+      changes:
+        - createTable:
+            tableName: temperature_readings
+            schemaName: schema_monitoring
+            columns:
+              - column:
+                  name: temperature_reading_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: aggregate_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reading_date
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: front_bearing_temp
+                  type: DOUBLE
+              - column:
+                  name: rear_bearing_temp
+                  type: DOUBLE
+              - column:
+                  name: warning_triggered
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: alarm_triggered
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  # ===== ТАБЛИЦА АВАРИЙНЫХ ЗАПИСЕЙ =====
+  - changeSet:
+      id: create-threshold-table
+      author: Numerouno_life
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            tableExists:
+              tableName: thresholds
+              schemaName: schema_monitoring
+      changes:
+        - createTable:
+            tableName: thresholds
+            schemaName: schema_monitoring
+            columns:
+              - column:
+                  name: threshold_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: aggregate_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: warning_threshold
+                  type: DOUBLE
+              - column:
+                  name: warning_timestamp
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: alarm_threshold
+                  type: DOUBLE
+              - column:
+                  name: alarm_timestamp
+                  type: TIMESTAMP
+                  constraints:
+                    defaultValueComputed: CURRENT_TIMESTAMP
+
+  - changeSet:
+      id: create-threshold-indexes
+      author: Numerouno_life
+      changes:
+        - createIndex:
+            tableName: temperature_readings
+            schemaName: schema_monitoring
+            indexName: idx_temp_readings_aggregate_id
+            columns:
+              - column:
+                  name: aggregate_id
+        - createIndex:
+            tableName: thresholds
+            schemaName: schema_monitoring
+            indexName: idx_threshold_readings_aggregate_id
+            columns:
+              - column:
+                  name: aggregate_id
