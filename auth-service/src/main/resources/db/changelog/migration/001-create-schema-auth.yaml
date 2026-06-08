@@ -22,7 +22,7 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: passwordHash
+                  name: password_hash
                   type: VARCHAR(255)
                   constraints:
                     nullable: false
