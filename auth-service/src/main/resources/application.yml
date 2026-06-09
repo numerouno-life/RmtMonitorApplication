@@ -44,7 +44,16 @@ management:
     health:
       show-details: when_authorized
 
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+  expiration:
+    access:
+      minutes: 1440   # 24 часа
+
 logging:
   level:
     root: INFO
     ru.practicum.auth: DEBUG
+
+

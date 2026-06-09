@@ -15,6 +15,13 @@ spring:
     default-schema: schema_auth
     liquibase-schema: schema_auth
 
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+  expiration:
+    access:
+      minutes: 1440   # 24 часа
+
 # Минимизируем логирование в контейнерах
 logging:
   level:
