@@ -1,7 +1,6 @@
 package ru.practicum.security;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -9,6 +8,7 @@ import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import ru.practicum.model.User;
 
 import javax.crypto.SecretKey;
 import java.time.Instant;
@@ -33,7 +33,7 @@ public class JwtTokenProvider {
         Instant now = Instant.now();
         Instant expiration = now.plus(accessExpirationMinutes, ChronoUnit.MINUTES);
         return Jwts.builder()
-                .subject(user.user.getPersonnelNumber())
+                .subject(user.getPersonnelNumber())
                 .claim("id", user.getId())
                 .claim("role", user.getRole().name())
                 .issuedAt(Date.from(now))

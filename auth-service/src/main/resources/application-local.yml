@@ -29,4 +29,3 @@ logging:
   level:
     root: DEBUG
     org.springframework.web: DEBUG
-    org.springframework.cloud.openfeign: DEBUG

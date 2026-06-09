@@ -1,0 +1,4 @@
+databaseChangeLog:
+  - include:
+      file: migration/001-create-schema-auth.yaml
+      relativeToChangelogFile: true

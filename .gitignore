@@ -43,3 +43,4 @@ build/
 .DS_Store
 /.idea/.gigateam/documenting.properties
 install.sh
+/build.log
