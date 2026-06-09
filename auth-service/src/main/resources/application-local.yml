@@ -18,6 +18,13 @@ feign:
         connectTimeout: 30000
         readTimeout: 30000
 
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+  expiration:
+    access:
+      minutes: 1440   # 24 часа
+
 logging:
   level:
     root: DEBUG
