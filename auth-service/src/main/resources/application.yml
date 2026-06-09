@@ -1,2 +1,9 @@
 server:
   port: 8081
+
+jwt:
+  secret:
+    access: ${JWT_ACCESS_SECRET}
+  expiration:
+    access:
+      minutes: 1440   # 24 часа
